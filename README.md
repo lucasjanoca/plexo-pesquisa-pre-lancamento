@@ -2,6 +2,10 @@
 
 Pesquisa pública e responsiva da Plexo para entender hábitos e necessidades relacionadas à experiência local.
 
+## 🌐 Projeto ao vivo
+
+**[Acessar plexoplace.com.br](https://plexoplace.com.br/)**
+
 ## Produção
 
 - Frontend estático compatível com GitHub Pages.
@@ -35,7 +39,7 @@ A chave publishable é destinada ao uso no cliente. A segurança dos dados depen
 
 ## Publicação
 
-O projeto pode ser publicado diretamente pelo GitHub Pages a partir da branch principal, na raiz do repositório.
+O projeto está publicado pelo GitHub Pages usando domínio personalizado.
 
 ## Testes recomendados antes do lançamento
 
@@ -52,5 +56,3 @@ A pesquisa usa somente objetos com prefixo `plexo_` ou o schema privado `plexo_p
 ## GitHub Pages
 
 O repositório inclui `.github/workflows/pages.yml`. A cada push na `main`, o workflow valida o JavaScript, verifica se nenhuma chave secreta foi colocada no frontend e publica somente os arquivos necessários do site. A pasta `supabase/` e a documentação não entram no artefato público do Pages.
-
-Na primeira publicação do repositório, o GitHub Pages precisa estar configurado para usar **GitHub Actions** como fonte de publicação.
