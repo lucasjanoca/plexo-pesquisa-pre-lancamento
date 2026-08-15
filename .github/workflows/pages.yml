@@ -1,0 +1,67 @@
+name: Validar e publicar Plexo
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Validar JavaScript
+        run: |
+          node --check app.js
+          node --check config.js
+
+      - name: Verificar configuração pública
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'sb_publishable_' config.js
+          ! grep -Eq 'sb_secret_[A-Za-z0-9_-]{10,}|service_role' config.js
+          ! grep -R '__SUPABASE_' index.html app.js config.js styles.css
+          test -f assets/fundo-plexo.webp
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Preparar site estático
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _site/assets
+          cp index.html styles.css app.js config.js robots.txt .nojekyll _site/
+          cp assets/fundo-plexo.webp _site/assets/
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Enviar artefato do site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - name: Publicar GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

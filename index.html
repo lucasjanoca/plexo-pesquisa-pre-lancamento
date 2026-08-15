@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#05070b" />
+  <meta name="description" content="Pesquisa rápida da Plexo sobre experiências, serviços, eventos e comércio local." />
+  <meta property="og:title" content="Pulso da Cidade — Pesquisa Plexo" />
+  <meta property="og:description" content="7 perguntas rápidas para entender o que faz diferença na experiência local." />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="pt_BR" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <meta name="referrer" content="no-referrer" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://yncspxfsvlqdnodlsosb.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'; upgrade-insecure-requests" />
+  <title>Pulso da Cidade — Pesquisa Plexo</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="config.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="ambient ambient-a" aria-hidden="true"></div>
+  <div class="ambient ambient-b" aria-hidden="true"></div>
+
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand" aria-label="Plexo Lab">PLX<span>//</span>LAB</div>
+      <div class="step-indicator" id="stepIndicator" aria-live="polite">PRÉ-LANÇAMENTO</div>
+    </header>
+
+    <section class="card intro-screen active" id="intro" aria-labelledby="introTitle">
+      <div class="eyebrow">PULSO DA CIDADE</div>
+      <h1 id="introTitle">Como você vive<br><span>a sua cidade?</span></h1>
+      <p class="lead">7 perguntas rápidas. Cerca de 1 minuto. Sem nome, e-mail, telefone ou cadastro.</p>
+
+      <div class="stats" aria-label="Resumo da pesquisa">
+        <div><strong>7</strong><span>perguntas</span></div>
+        <div><strong>~1</strong><span>minuto</span></div>
+        <div><strong>0</strong><span>cadastros</span></div>
+      </div>
+
+      <button class="primary-btn" id="startBtn" type="button">
+        <span>Começar</span>
+        <span aria-hidden="true">→</span>
+      </button>
+
+      <p class="privacy-note">Não pedimos dados de identificação. As respostas são usadas para entender necessidades e hábitos relacionados à experiência local.</p>
+      <p class="setup-warning hidden-display" id="setupWarning" role="alert">Esta pesquisa ainda está em configuração. Tente novamente mais tarde.</p>
+    </section>
+
+    <section class="survey-screen" id="survey" aria-labelledby="questionTitle">
+      <div class="progress-wrap">
+        <div class="progress-meta">
+          <span id="progressText">01 / 07</span>
+          <span id="progressPercent">14%</span>
+        </div>
+        <div class="progress-track" role="progressbar" aria-label="Progresso da pesquisa" aria-valuemin="0" aria-valuemax="100" aria-valuenow="14" id="progressTrack">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+      </div>
+
+      <div id="questionHost" aria-live="polite"></div>
+
+      <div class="submit-error hidden-display" id="submitError" role="alert">
+        <p id="submitErrorText">Não foi possível registrar sua resposta.</p>
+        <button class="retry-btn" id="retryBtn" type="button">Tentar novamente</button>
+      </div>
+
+      <div class="nav-row">
+        <button class="ghost-btn" id="backBtn" type="button">← Voltar</button>
+        <button class="ghost-btn hidden" id="skipBtn" type="button">Pular</button>
+      </div>
+    </section>
+
+    <section class="card final-screen" id="final" aria-labelledby="finalTitle">
+      <div class="pulse-mark" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="eyebrow">RESPOSTA REGISTRADA</div>
+      <h2 id="finalTitle">Obrigado por deixar<br><span>seu pulso na cidade.</span></h2>
+      <p>Sua resposta foi registrada e vai ajudar a Plexo a entender melhor o que faz diferença na experiência local.</p>
+      <div class="final-code">PLX // 2026</div>
+    </section>
+  </main>
+
+  <template id="questionTemplate">
+    <article class="question-card">
+      <div class="question-tag"></div>
+      <h2 class="question-title" id="questionTitle"></h2>
+      <p class="question-help"></p>
+      <div class="answers"></div>
+    </article>
+  </template>
+</body>
+</html>
