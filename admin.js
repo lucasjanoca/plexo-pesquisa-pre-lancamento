@@ -319,6 +319,15 @@ function filteredResponses() {
   const period = periodFilter.value;
   if (period === "all") return allResponses.slice();
 
+  if (period === "1") {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    return allResponses.filter((item) => {
+      const time = new Date(item.created_at).getTime();
+      return Number.isFinite(time) && time >= startOfToday;
+    });
+  }
+
   const days = Number(period);
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   return allResponses.filter((item) => {
@@ -529,7 +538,8 @@ async function loadDashboardData() {
 }
 
 function csvEscape(value) {
-  const text = value == null ? "" : String(value);
+  let text = value == null ? "" : String(value);
+  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
   return `"${text.replace(/"/g, '""')}"`;
 }
 
