@@ -7,7 +7,7 @@
   <meta name="description" content="Painel administrativo da pesquisa pré-lançamento Plexo." />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <meta name="referrer" content="no-referrer" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://yncspxfsvlqdnodlsosb.supabase.co; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://yncspxfsvlqdnodlsosb.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests" />
   <title>Plexo — Painel da Pesquisa</title>
   <link rel="stylesheet" href="admin.css?v=20260816-1" />
   <script src="config.js?v=20260816-1" defer></script>
@@ -36,10 +36,10 @@
       <form class="login-card" id="loginForm" novalidate>
         <div class="login-mark" aria-hidden="true"><span></span><span></span><span></span></div>
         <label for="emailInput">E-mail</label>
-        <input id="emailInput" name="email" type="email" inputmode="email" autocomplete="username" required placeholder="admin@plexo.com" />
+        <input id="emailInput" type="email" inputmode="email" autocomplete="username" required placeholder="admin@plexo.com" />
 
         <label for="passwordInput">Senha</label>
-        <input id="passwordInput" name="password" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••" />
+        <input id="passwordInput" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••" />
 
         <button class="primary-btn" id="loginBtn" type="submit">
           <span>Entrar no painel</span>
