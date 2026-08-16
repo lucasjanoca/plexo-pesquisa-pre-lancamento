@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#05070b" />
+  <meta name="description" content="Painel administrativo da pesquisa pré-lançamento Plexo." />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <meta name="referrer" content="no-referrer" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://yncspxfsvlqdnodlsosb.supabase.co; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests" />
+  <title>Plexo — Painel da Pesquisa</title>
+  <link rel="stylesheet" href="admin.css?v=20260816-1" />
+  <script src="config.js?v=20260816-1" defer></script>
+  <script src="admin.js?v=20260816-1" defer></script>
+</head>
+<body>
+  <div class="ambient ambient-a" aria-hidden="true"></div>
+  <div class="ambient ambient-b" aria-hidden="true"></div>
+
+  <main class="admin-shell">
+    <header class="admin-topbar">
+      <a class="brand" href="index.html" aria-label="Voltar para a pesquisa Plexo">PLX<span>//</span>LAB</a>
+      <div class="topbar-right">
+        <span class="secure-pill">PAINEL PRIVADO</span>
+        <span class="session-user hidden-display" id="sessionUser"></span>
+      </div>
+    </header>
+
+    <section class="login-panel" id="loginView" aria-labelledby="loginTitle">
+      <div class="login-copy">
+        <div class="eyebrow">RESULTADOS // PRÉ-LANÇAMENTO</div>
+        <h1 id="loginTitle">Veja o pulso<br><span>da cidade.</span></h1>
+        <p>Entre com uma conta administrativa autorizada no Supabase para visualizar as respostas, tendências e comentários da pesquisa.</p>
+      </div>
+
+      <form class="login-card" id="loginForm" novalidate>
+        <div class="login-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <label for="emailInput">E-mail</label>
+        <input id="emailInput" name="email" type="email" inputmode="email" autocomplete="username" required placeholder="admin@plexo.com" />
+
+        <label for="passwordInput">Senha</label>
+        <input id="passwordInput" name="password" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••" />
+
+        <button class="primary-btn" id="loginBtn" type="submit">
+          <span>Entrar no painel</span>
+          <span aria-hidden="true">→</span>
+        </button>
+
+        <p class="auth-message hidden-display" id="authMessage" role="alert"></p>
+        <p class="privacy-note">A permissão é validada pelo banco. Ter o endereço desta página não libera acesso às respostas.</p>
+      </form>
+    </section>
+
+    <section class="dashboard hidden-display" id="dashboardView" aria-labelledby="dashboardTitle">
+      <div class="dashboard-heading">
+        <div>
+          <div class="eyebrow">PULSO // DADOS</div>
+          <h1 id="dashboardTitle">Painel da pesquisa</h1>
+          <p id="dashboardSubtitle">Carregando respostas…</p>
+        </div>
+        <div class="dashboard-actions">
+          <button class="soft-btn" id="refreshBtn" type="button">↻ Atualizar</button>
+          <button class="soft-btn" id="exportBtn" type="button">↓ Exportar CSV</button>
+          <button class="soft-btn danger" id="logoutBtn" type="button">Sair</button>
+        </div>
+      </div>
+
+      <div class="toolbar" aria-label="Filtros do painel">
+        <label>
+          <span>Período</span>
+          <select id="periodFilter">
+            <option value="all">Todo o período</option>
+            <option value="30">Últimos 30 dias</option>
+            <option value="7">Últimos 7 dias</option>
+            <option value="1">Hoje</option>
+          </select>
+        </label>
+        <label class="search-field">
+          <span>Buscar comentário</span>
+          <input id="feedbackSearch" type="search" maxlength="80" placeholder="Digite uma palavra…" autocomplete="off" />
+        </label>
+      </div>
+
+      <div class="panel-message hidden-display" id="panelMessage" role="status" aria-live="polite"></div>
+
+      <section class="kpi-grid" aria-label="Resumo da pesquisa">
+        <article class="kpi-card">
+          <span>Respostas</span>
+          <strong id="totalResponses">—</strong>
+          <small id="responsePeriodLabel">no período</small>
+        </article>
+        <article class="kpi-card">
+          <span>Interesse positivo</span>
+          <strong id="positiveInterest">—</strong>
+          <small>com certeza + quer conhecer</small>
+        </article>
+        <article class="kpi-card">
+          <span>Maior prioridade</span>
+          <strong class="kpi-text" id="topPriority">—</strong>
+          <small id="topPriorityShare">—</small>
+        </article>
+        <article class="kpi-card">
+          <span>Tempo médio</span>
+          <strong id="averageDuration">—</strong>
+          <small>para concluir a pesquisa</small>
+        </article>
+      </section>
+
+      <section class="section-block" aria-labelledby="breakdownTitle">
+        <div class="section-heading">
+          <div>
+            <div class="eyebrow">DISTRIBUIÇÃO</div>
+            <h2 id="breakdownTitle">Como as pessoas responderam</h2>
+          </div>
+        </div>
+        <div class="breakdown-grid" id="breakdownGrid"></div>
+      </section>
+
+      <section class="section-block" aria-labelledby="feedbackTitle">
+        <div class="section-heading">
+          <div>
+            <div class="eyebrow">VOZ ABERTA</div>
+            <h2 id="feedbackTitle">O que está fazendo falta</h2>
+          </div>
+          <span class="section-count" id="feedbackCount">0 comentários</span>
+        </div>
+        <div class="feedback-list" id="feedbackList"></div>
+      </section>
+
+      <section class="section-block" aria-labelledby="latestTitle">
+        <div class="section-heading">
+          <div>
+            <div class="eyebrow">RESPOSTAS</div>
+            <h2 id="latestTitle">Últimos envios</h2>
+          </div>
+          <span class="section-count" id="latestCount">0 respostas</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Prioridade</th>
+                <th>Interesse</th>
+                <th>Tempo</th>
+                <th>Comentário</th>
+              </tr>
+            </thead>
+            <tbody id="responsesTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+</body>
+</html>
