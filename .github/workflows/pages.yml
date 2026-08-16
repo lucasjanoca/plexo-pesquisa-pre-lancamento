@@ -21,15 +21,19 @@ jobs:
         run: |
           node --check app.js
           node --check config.js
+          node --check admin.js
 
       - name: Verificar configuração pública
         shell: bash
         run: |
           set -euo pipefail
           grep -q 'sb_publishable_' config.js
-          ! grep -Eq 'sb_secret_[A-Za-z0-9_-]{10,}|service_role' config.js
-          ! grep -R '__SUPABASE_' index.html app.js config.js styles.css
+          ! grep -Eq 'sb_secret_[A-Za-z0-9_-]{10,}|service_role' config.js admin.js index.html admin.html styles.css admin.css
+          ! grep -R '__SUPABASE_' index.html app.js config.js styles.css admin.html admin.js admin.css
           test -f assets/fundo-plexo.webp
+          test -f admin.html
+          test -f admin.js
+          test -f admin.css
 
   deploy:
     if: github.event_name != 'pull_request'
@@ -51,7 +55,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p _site/assets
-          cp index.html styles.css app.js config.js robots.txt .nojekyll _site/
+          cp index.html styles.css app.js config.js admin.html admin.css admin.js robots.txt .nojekyll _site/
           cp assets/fundo-plexo.webp _site/assets/
 
       - name: Configurar GitHub Pages
