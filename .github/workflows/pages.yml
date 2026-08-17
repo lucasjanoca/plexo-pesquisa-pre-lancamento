@@ -22,18 +22,21 @@ jobs:
           node --check app.js
           node --check config.js
           node --check admin.js
+          node --check admin-polish.js
 
       - name: Verificar configuração pública
         shell: bash
         run: |
           set -euo pipefail
           grep -q 'sb_publishable_' config.js
-          ! grep -Eq 'sb_secret_[A-Za-z0-9_-]{10,}|service_role' config.js admin.js index.html admin.html styles.css admin.css
-          ! grep -R '__SUPABASE_' index.html app.js config.js styles.css admin.html admin.js admin.css
+          ! grep -Eq 'sb_secret_[A-Za-z0-9_-]{10,}|service_role' config.js admin.js admin-polish.js index.html admin.html styles.css admin.css admin-polish.css
+          ! grep -R '__SUPABASE_' index.html app.js config.js styles.css admin.html admin.js admin.css admin-polish.js admin-polish.css
           test -f assets/fundo-plexo.webp
           test -f admin.html
           test -f admin.js
           test -f admin.css
+          test -f admin-polish.js
+          test -f admin-polish.css
 
       - name: Validar proteções do frontend
         shell: bash
@@ -48,9 +51,9 @@ jobs:
           grep -q 'sessionStorage' admin.js
           grep -q '/auth/v1' admin.js
           grep -q 'Responder novamente' index.html
-          ! grep -Eq 'innerHTML|outerHTML|insertAdjacentHTML|document\.write' app.js admin.js
+          ! grep -Eq 'innerHTML|outerHTML|insertAdjacentHTML|document\.write' app.js admin.js admin-polish.js
           ! grep -Eq '<script[^>]+src="https?://' index.html admin.html
-          ! grep -Eq 'http://' index.html admin.html app.js admin.js config.js styles.css admin.css
+          ! grep -Eq 'http://' index.html admin.html app.js admin.js admin-polish.js config.js styles.css admin.css admin-polish.css
 
   deploy:
     if: github.event_name != 'pull_request'
@@ -72,7 +75,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p _site/assets
-          cp index.html styles.css app.js config.js admin.html admin.css admin.js robots.txt .nojekyll _site/
+          cp index.html styles.css app.js config.js admin.html admin.css admin.js admin-polish.css admin-polish.js robots.txt .nojekyll _site/
           cp assets/fundo-plexo.webp _site/assets/
 
       - name: Configurar GitHub Pages
