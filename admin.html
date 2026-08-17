@@ -3,15 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <meta name="theme-color" content="#05070b" />
-  <meta name="description" content="Painel administrativo da pesquisa pré-lançamento Plexo." />
-  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <meta name="description" content="Painel administrativo privado da pesquisa pré-lançamento Plexo." />
+  <meta name="robots" content="noindex,nofollow,noarchive,nosnippet" />
   <meta name="referrer" content="no-referrer" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://yncspxfsvlqdnodlsosb.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests" />
-  <title>Plexo — Painel da Pesquisa</title>
-  <link rel="stylesheet" href="admin.css?v=20260816-1" />
-  <script src="config.js?v=20260816-1" defer></script>
-  <script src="admin.js?v=20260816-1" defer></script>
+  <title>Plexo — Respostas da Pesquisa</title>
+  <link rel="stylesheet" href="admin.css?v=20260817-3" />
+  <script src="config.js?v=20260817-3" defer></script>
+  <script src="admin.js?v=20260817-3" defer></script>
 </head>
 <body>
   <div class="ambient ambient-a" aria-hidden="true"></div>
@@ -29,17 +32,17 @@
     <section class="login-panel" id="loginView" aria-labelledby="loginTitle">
       <div class="login-copy">
         <div class="eyebrow">RESULTADOS // PRÉ-LANÇAMENTO</div>
-        <h1 id="loginTitle">Veja o pulso<br><span>da cidade.</span></h1>
-        <p>Entre com uma conta administrativa autorizada no Supabase para visualizar as respostas, tendências e comentários da pesquisa.</p>
+        <h1 id="loginTitle">Veja cada<br><span>resposta.</span></h1>
+        <p>Entre com uma conta administrativa autorizada para acompanhar respostas individuais, tendências e comentários da pesquisa.</p>
       </div>
 
       <form class="login-card" id="loginForm" novalidate>
         <div class="login-mark" aria-hidden="true"><span></span><span></span><span></span></div>
         <label for="emailInput">E-mail</label>
-        <input id="emailInput" type="email" inputmode="email" autocomplete="username" required placeholder="admin@plexo.com" />
+        <input id="emailInput" type="email" inputmode="email" autocomplete="username" required maxlength="160" placeholder="seu@email.com" />
 
         <label for="passwordInput">Senha</label>
-        <input id="passwordInput" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••" />
+        <input id="passwordInput" type="password" autocomplete="current-password" required minlength="6" maxlength="128" placeholder="••••••••" />
 
         <button class="primary-btn" id="loginBtn" type="submit">
           <span>Entrar no painel</span>
@@ -47,14 +50,14 @@
         </button>
 
         <p class="auth-message hidden-display" id="authMessage" role="alert"></p>
-        <p class="privacy-note">A permissão é validada pelo banco. Ter o endereço desta página não libera acesso às respostas.</p>
+        <p class="privacy-note">O acesso às respostas é validado pelo banco. Ter o endereço desta página não libera os dados.</p>
       </form>
     </section>
 
     <section class="dashboard hidden-display" id="dashboardView" aria-labelledby="dashboardTitle">
       <div class="dashboard-heading">
         <div>
-          <div class="eyebrow">PULSO // DADOS</div>
+          <div class="eyebrow">PULSO // RESPOSTAS</div>
           <h1 id="dashboardTitle">Painel da pesquisa</h1>
           <p id="dashboardSubtitle">Carregando respostas…</p>
         </div>
@@ -65,7 +68,7 @@
         </div>
       </div>
 
-      <div class="toolbar" aria-label="Filtros do painel">
+      <section class="toolbar" aria-label="Filtros das respostas">
         <label>
           <span>Período</span>
           <select id="periodFilter">
@@ -75,11 +78,27 @@
             <option value="1">Hoje</option>
           </select>
         </label>
-        <label class="search-field">
-          <span>Buscar comentário</span>
-          <input id="feedbackSearch" type="search" maxlength="80" placeholder="Digite uma palavra…" autocomplete="off" />
+        <label>
+          <span>Interesse</span>
+          <select id="interestFilter">
+            <option value="all">Todos</option>
+            <option value="positive">Interesse positivo</option>
+            <option value="maybe">Talvez</option>
+            <option value="negative">Provavelmente não</option>
+          </select>
         </label>
-      </div>
+        <label>
+          <span>Ordenar</span>
+          <select id="sortFilter">
+            <option value="newest">Mais recentes</option>
+            <option value="oldest">Mais antigas</option>
+          </select>
+        </label>
+        <label class="search-field">
+          <span>Buscar nas respostas</span>
+          <input id="responseSearch" type="search" maxlength="100" placeholder="Ex.: eventos, Instagram, comentário…" autocomplete="off" />
+        </label>
+      </section>
 
       <div class="panel-message hidden-display" id="panelMessage" role="status" aria-live="polite"></div>
 
@@ -102,14 +121,29 @@
         <article class="kpi-card">
           <span>Tempo médio</span>
           <strong id="averageDuration">—</strong>
-          <small>para concluir a pesquisa</small>
+          <small>para concluir</small>
         </article>
+      </section>
+
+      <section class="section-block response-section" aria-labelledby="responsesTitle">
+        <div class="section-heading response-heading">
+          <div>
+            <div class="eyebrow">RESPOSTAS INDIVIDUAIS</div>
+            <h2 id="responsesTitle">Veja o que cada pessoa respondeu</h2>
+            <p class="section-description">Abra qualquer resposta para visualizar as 7 perguntas completas, uma por uma.</p>
+          </div>
+          <span class="section-count" id="responseCount">0 respostas</span>
+        </div>
+        <div class="response-cards" id="responseCards"></div>
+        <div class="load-more-wrap hidden-display" id="loadMoreWrap">
+          <button class="soft-btn load-more-btn" id="loadMoreBtn" type="button">Mostrar mais respostas</button>
+        </div>
       </section>
 
       <section class="section-block" aria-labelledby="breakdownTitle">
         <div class="section-heading">
           <div>
-            <div class="eyebrow">DISTRIBUIÇÃO</div>
+            <div class="eyebrow">VISÃO GERAL</div>
             <h2 id="breakdownTitle">Como as pessoas responderam</h2>
           </div>
         </div>
@@ -119,38 +153,34 @@
       <section class="section-block" aria-labelledby="feedbackTitle">
         <div class="section-heading">
           <div>
-            <div class="eyebrow">VOZ ABERTA</div>
+            <div class="eyebrow">COMENTÁRIOS</div>
             <h2 id="feedbackTitle">O que está fazendo falta</h2>
           </div>
           <span class="section-count" id="feedbackCount">0 comentários</span>
         </div>
         <div class="feedback-list" id="feedbackList"></div>
       </section>
-
-      <section class="section-block" aria-labelledby="latestTitle">
-        <div class="section-heading">
-          <div>
-            <div class="eyebrow">RESPOSTAS</div>
-            <h2 id="latestTitle">Últimos envios</h2>
-          </div>
-          <span class="section-count" id="latestCount">0 respostas</span>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th>Prioridade</th>
-                <th>Interesse</th>
-                <th>Tempo</th>
-                <th>Comentário</th>
-              </tr>
-            </thead>
-            <tbody id="responsesTableBody"></tbody>
-          </table>
-        </div>
-      </section>
     </section>
   </main>
+
+  <div class="detail-overlay hidden-display" id="detailOverlay" aria-hidden="true">
+    <div class="detail-backdrop" data-close-detail="true"></div>
+    <section class="detail-panel" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+      <header class="detail-header">
+        <div>
+          <div class="eyebrow">RESPOSTA COMPLETA</div>
+          <h2 id="detailTitle">Resposta</h2>
+          <p id="detailMeta">—</p>
+        </div>
+        <button class="icon-btn" id="detailCloseBtn" type="button" aria-label="Fechar resposta">×</button>
+      </header>
+      <div class="detail-body" id="detailAnswers"></div>
+      <footer class="detail-footer">
+        <button class="soft-btn" id="detailPrevBtn" type="button">← Anterior</button>
+        <span id="detailPosition">—</span>
+        <button class="soft-btn" id="detailNextBtn" type="button">Próxima →</button>
+      </footer>
+    </section>
+  </div>
 </body>
 </html>
