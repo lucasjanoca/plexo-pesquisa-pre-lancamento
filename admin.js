@@ -1,9 +1,43 @@
 "use strict";
 
 const CONFIG = window.PLEXO_CONFIG || {};
-const SESSION_KEY = "plexoSurveyAdminSessionV1";
+const SESSION_KEY = "plexoSurveyAdminSessionV2";
 const PAGE_SIZE = 1000;
 const MAX_ROWS = 10000;
+const CARD_PAGE_SIZE = 20;
+const SESSION_ABSOLUTE_MS = 8 * 60 * 60 * 1000;
+
+const questionDetails = [
+  {
+    key: "discovery",
+    title: "Quando você quer descobrir algo para fazer na cidade, onde procura primeiro?"
+  },
+  {
+    key: "promotions",
+    title: "Você costuma descobrir promoções antes de fazer suas compras?"
+  },
+  {
+    key: "services",
+    title: "Você precisa de um profissional. O que faz primeiro?"
+  },
+  {
+    key: "events",
+    title: "Quando acontece algo legal na cidade, como você costuma ficar sabendo?"
+  },
+  {
+    key: "priority",
+    title: "Se você pudesse organizar UMA dessas coisas em um só lugar, qual escolheria?"
+  },
+  {
+    key: "open_feedback",
+    title: "O que mais faz falta em uma experiência digital da sua cidade?",
+    open: true
+  },
+  {
+    key: "interest",
+    title: "Você testaria uma nova plataforma feita especialmente para a sua cidade?"
+  }
+];
 
 const choiceQuestions = [
   {
@@ -41,6 +75,10 @@ const choiceQuestions = [
 let allResponses = [];
 let activeSession = null;
 let loading = false;
+let visibleLimit = CARD_PAGE_SIZE;
+let detailRows = [];
+let activeDetailIndex = -1;
+let hiddenAt = 0;
 
 const loginView = document.getElementById("loginView");
 const dashboardView = document.getElementById("dashboardView");
@@ -54,7 +92,9 @@ const refreshBtn = document.getElementById("refreshBtn");
 const exportBtn = document.getElementById("exportBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const periodFilter = document.getElementById("periodFilter");
-const feedbackSearch = document.getElementById("feedbackSearch");
+const interestFilter = document.getElementById("interestFilter");
+const sortFilter = document.getElementById("sortFilter");
+const responseSearch = document.getElementById("responseSearch");
 const panelMessage = document.getElementById("panelMessage");
 const dashboardSubtitle = document.getElementById("dashboardSubtitle");
 const totalResponses = document.getElementById("totalResponses");
@@ -63,11 +103,21 @@ const positiveInterest = document.getElementById("positiveInterest");
 const topPriority = document.getElementById("topPriority");
 const topPriorityShare = document.getElementById("topPriorityShare");
 const averageDuration = document.getElementById("averageDuration");
+const responseCount = document.getElementById("responseCount");
+const responseCards = document.getElementById("responseCards");
+const loadMoreWrap = document.getElementById("loadMoreWrap");
+const loadMoreBtn = document.getElementById("loadMoreBtn");
 const breakdownGrid = document.getElementById("breakdownGrid");
 const feedbackList = document.getElementById("feedbackList");
 const feedbackCount = document.getElementById("feedbackCount");
-const latestCount = document.getElementById("latestCount");
-const responsesTableBody = document.getElementById("responsesTableBody");
+const detailOverlay = document.getElementById("detailOverlay");
+const detailCloseBtn = document.getElementById("detailCloseBtn");
+const detailTitle = document.getElementById("detailTitle");
+const detailMeta = document.getElementById("detailMeta");
+const detailAnswers = document.getElementById("detailAnswers");
+const detailPrevBtn = document.getElementById("detailPrevBtn");
+const detailNextBtn = document.getElementById("detailNextBtn");
+const detailPosition = document.getElementById("detailPosition");
 
 function isConfigured() {
   const validUrl = /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(String(CONFIG.supabaseUrl || ""));
@@ -88,7 +138,9 @@ function safeSessionRead() {
     const raw = sessionStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : null;
+    if (!parsed || typeof parsed !== "object") return null;
+    if (!Number(parsed.startedAt) || Date.now() - Number(parsed.startedAt) > SESSION_ABSOLUTE_MS) return null;
+    return parsed;
   } catch {
     return null;
   }
@@ -98,7 +150,7 @@ function safeSessionWrite(session) {
   try {
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
   } catch {
-    // O painel continua funcionando durante a aba atual, mesmo sem sessionStorage.
+    // A aba atual continua funcionando mesmo se o navegador bloquear sessionStorage.
   }
 }
 
@@ -133,21 +185,19 @@ function clearPanelMessage() {
 
 function setLoading(isLoading) {
   loading = isLoading;
-  loginBtn.disabled = isLoading;
-  refreshBtn.disabled = isLoading;
-  exportBtn.disabled = isLoading;
-  periodFilter.disabled = isLoading;
-  feedbackSearch.disabled = isLoading;
+  [loginBtn, refreshBtn, exportBtn, periodFilter, interestFilter, sortFilter, responseSearch, loadMoreBtn].forEach((control) => {
+    if (control) control.disabled = isLoading;
+  });
 }
 
-function normalizeSession(payload) {
+function normalizeSession(payload, previousStartedAt) {
   const expiresIn = Number(payload.expires_in) || 3600;
   return {
     accessToken: payload.access_token,
     refreshToken: payload.refresh_token,
     expiresAt: Date.now() + expiresIn * 1000,
-    email: payload.user && payload.user.email ? payload.user.email : "Administrador",
-    user: payload.user || null
+    startedAt: Number(previousStartedAt) || Date.now(),
+    email: payload.user && payload.user.email ? payload.user.email : "Administrador"
   };
 }
 
@@ -165,6 +215,15 @@ async function readJsonSafely(response) {
   }
 }
 
+function friendlyAuthError(payload) {
+  const raw = String(payload && (payload.msg || payload.message || payload.error_description || ""));
+  const normalized = raw.toLocaleLowerCase("pt-BR");
+  if (normalized.includes("invalid login") || normalized.includes("invalid credentials")) return "E-mail ou senha inválidos.";
+  if (normalized.includes("email not confirmed")) return "Este e-mail ainda não foi confirmado.";
+  if (normalized.includes("rate limit") || normalized.includes("too many")) return "Muitas tentativas. Aguarde um pouco e tente novamente.";
+  return "Não foi possível entrar agora. Confira os dados e tente novamente.";
+}
+
 async function signIn(email, password) {
   const response = await fetch(`${authBaseUrl()}/token?grant_type=password`, {
     method: "POST",
@@ -179,8 +238,7 @@ async function signIn(email, password) {
 
   const payload = await readJsonSafely(response);
   if (!response.ok || !payload || !payload.access_token) {
-    const detail = payload && (payload.msg || payload.message || payload.error_description);
-    throw new Error(detail || "E-mail ou senha inválidos.");
+    throw new Error(friendlyAuthError(payload));
   }
 
   return normalizeSession(payload);
@@ -188,6 +246,7 @@ async function signIn(email, password) {
 
 async function refreshSession() {
   if (!activeSession || !activeSession.refreshToken) throw new Error("Sessão expirada.");
+  if (Date.now() - Number(activeSession.startedAt || 0) > SESSION_ABSOLUTE_MS) throw new Error("Sessão expirada.");
 
   const response = await fetch(`${authBaseUrl()}/token?grant_type=refresh_token`, {
     method: "POST",
@@ -203,15 +262,40 @@ async function refreshSession() {
   const payload = await readJsonSafely(response);
   if (!response.ok || !payload || !payload.access_token) throw new Error("Sessão expirada.");
 
-  activeSession = normalizeSession(payload);
+  activeSession = normalizeSession(payload, activeSession.startedAt);
   safeSessionWrite(activeSession);
   return activeSession;
 }
 
 async function ensureFreshSession() {
   if (!activeSession) throw new Error("Sessão ausente.");
+  if (Date.now() - Number(activeSession.startedAt || 0) > SESSION_ABSOLUTE_MS) throw new Error("Sessão expirada.");
   if (Number(activeSession.expiresAt) - Date.now() < 60_000) await refreshSession();
   return activeSession;
+}
+
+async function fetchCurrentUser() {
+  await ensureFreshSession();
+  const response = await fetch(`${authBaseUrl()}/user`, {
+    headers: {
+      apikey: CONFIG.publishableKey,
+      Authorization: `Bearer ${activeSession.accessToken}`
+    },
+    cache: "no-store",
+    referrerPolicy: "no-referrer"
+  });
+
+  const payload = await readJsonSafely(response);
+  if (!response.ok || !payload || !payload.id) throw new Error("Sessão inválida.");
+  return payload;
+}
+
+async function verifyAdminSession() {
+  const user = await fetchCurrentUser();
+  if (!hasAdminClaim(user)) throw new Error("Esta conta não possui permissão administrativa da pesquisa.");
+  activeSession.email = user.email || activeSession.email || "Administrador";
+  safeSessionWrite(activeSession);
+  return user;
 }
 
 async function authorizedFetch(url, options = {}, retry = true) {
@@ -262,9 +346,7 @@ async function fetchResponses() {
     }
 
     if (!response.ok) {
-      const payload = await readJsonSafely(response);
-      const detail = payload && (payload.message || payload.hint || payload.details);
-      throw new Error(detail || `Não foi possível carregar as respostas (${response.status}).`);
+      throw new Error(`Não foi possível carregar as respostas (${response.status}).`);
     }
 
     const batch = await readJsonSafely(response);
@@ -290,6 +372,7 @@ function showLogin() {
   loginView.classList.remove("hidden-display");
   sessionUser.classList.add("hidden-display");
   passwordInput.value = "";
+  closeDetail();
 }
 
 function formatDate(value) {
@@ -315,25 +398,68 @@ function percent(part, total) {
   return total > 0 ? Math.round((part / total) * 100) : 0;
 }
 
-function filteredResponses() {
+function normalizeSearch(value) {
+  return String(value || "").trim().toLocaleLowerCase("pt-BR");
+}
+
+function rowSearchText(row) {
+  return normalizeSearch([
+    row.discovery,
+    row.promotions,
+    row.services,
+    row.events,
+    row.priority,
+    row.open_feedback,
+    row.interest,
+    formatDate(row.created_at)
+  ].filter(Boolean).join(" "));
+}
+
+function matchesInterest(row) {
+  switch (interestFilter.value) {
+    case "positive":
+      return row.interest === "Com certeza" || row.interest === "Quero conhecer primeiro";
+    case "maybe":
+      return row.interest === "Talvez";
+    case "negative":
+      return row.interest === "Provavelmente não";
+    default:
+      return true;
+  }
+}
+
+function matchesPeriod(row) {
   const period = periodFilter.value;
-  if (period === "all") return allResponses.slice();
+  if (period === "all") return true;
+
+  const time = new Date(row.created_at).getTime();
+  if (!Number.isFinite(time)) return false;
 
   if (period === "1") {
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    return allResponses.filter((item) => {
-      const time = new Date(item.created_at).getTime();
-      return Number.isFinite(time) && time >= startOfToday;
-    });
+    return time >= startOfToday;
   }
 
   const days = Number(period);
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
-  return allResponses.filter((item) => {
-    const time = new Date(item.created_at).getTime();
-    return Number.isFinite(time) && time >= cutoff;
+  return time >= cutoff;
+}
+
+function filteredResponses() {
+  const term = normalizeSearch(responseSearch.value);
+  const rows = allResponses.filter((row) => {
+    if (!matchesPeriod(row) || !matchesInterest(row)) return false;
+    return !term || rowSearchText(row).includes(term);
   });
+
+  rows.sort((a, b) => {
+    const timeA = new Date(a.created_at).getTime() || 0;
+    const timeB = new Date(b.created_at).getTime() || 0;
+    return sortFilter.value === "oldest" ? timeA - timeB : timeB - timeA;
+  });
+
+  return rows;
 }
 
 function responsePeriodText() {
@@ -355,11 +481,21 @@ function countValues(rows, key) {
   return counts;
 }
 
+function responseOrdinal(row) {
+  const index = allResponses.findIndex((item) => item.id === row.id);
+  if (index < 0) return "—";
+  return String(allResponses.length - index).padStart(3, "0");
+}
+
+function isPositiveInterest(value) {
+  return value === "Com certeza" || value === "Quero conhecer primeiro";
+}
+
 function renderKpis(rows) {
   totalResponses.textContent = new Intl.NumberFormat("pt-BR").format(rows.length);
   responsePeriodLabel.textContent = responsePeriodText();
 
-  const positive = rows.filter((row) => row.interest === "Com certeza" || row.interest === "Quero conhecer primeiro").length;
+  const positive = rows.filter((row) => isPositiveInterest(row.interest)).length;
   positiveInterest.textContent = rows.length ? `${percent(positive, rows.length)}%` : "—";
 
   const priorities = countValues(rows, "priority");
@@ -372,11 +508,94 @@ function renderKpis(rows) {
     }
   });
   topPriority.textContent = leadingPriority || "—";
-  topPriorityShare.textContent = leadingPriority ? `${leadingCount} respostas · ${percent(leadingCount, rows.length)}%` : "sem respostas no período";
+  topPriorityShare.textContent = leadingPriority ? `${leadingCount} respostas · ${percent(leadingCount, rows.length)}%` : "sem respostas no filtro";
 
   const durations = rows.map((row) => Number(row.duration_seconds)).filter((value) => Number.isFinite(value) && value > 0);
   const average = durations.length ? durations.reduce((sum, value) => sum + value, 0) / durations.length : null;
   averageDuration.textContent = average ? formatDuration(average) : "—";
+}
+
+function createSummaryItem(label, value) {
+  const item = document.createElement("div");
+  item.className = "response-summary-item";
+
+  const labelNode = document.createElement("span");
+  labelNode.textContent = label;
+
+  const valueNode = document.createElement("strong");
+  valueNode.textContent = value || "—";
+
+  item.append(labelNode, valueNode);
+  return item;
+}
+
+function renderResponseCards(rows) {
+  responseCards.replaceChildren();
+  responseCount.textContent = `${rows.length} ${rows.length === 1 ? "resposta" : "respostas"}`;
+
+  if (!rows.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.textContent = "Nenhuma resposta corresponde aos filtros selecionados.";
+    responseCards.appendChild(empty);
+    loadMoreWrap.classList.add("hidden-display");
+    return;
+  }
+
+  const visibleRows = rows.slice(0, visibleLimit);
+  visibleRows.forEach((row) => {
+    const card = document.createElement("article");
+    card.className = "response-card";
+
+    const top = document.createElement("div");
+    top.className = "response-card-top";
+
+    const titleWrap = document.createElement("div");
+    const title = document.createElement("h3");
+    title.className = "response-number";
+    title.textContent = `Resposta #${responseOrdinal(row)}`;
+    const date = document.createElement("p");
+    date.className = "response-date";
+    date.textContent = formatDate(row.created_at);
+    titleWrap.append(title, date);
+
+    const badge = document.createElement("span");
+    badge.className = `response-badge${isPositiveInterest(row.interest) ? " positive" : ""}`;
+    badge.textContent = row.interest || "Sem interesse informado";
+    top.append(titleWrap, badge);
+
+    const summary = document.createElement("div");
+    summary.className = "response-summary";
+    summary.append(
+      createSummaryItem("Prioridade", row.priority),
+      createSummaryItem("Tempo", formatDuration(row.duration_seconds))
+    );
+
+    card.append(top, summary);
+
+    if (row.open_feedback) {
+      const comment = document.createElement("p");
+      comment.className = "response-comment-preview";
+      comment.textContent = `“${String(row.open_feedback).trim()}”`;
+      card.appendChild(comment);
+    }
+
+    const openButton = document.createElement("button");
+    openButton.type = "button";
+    openButton.className = "response-open-btn";
+    openButton.dataset.responseId = row.id;
+    openButton.textContent = "Ver resposta completa →";
+    card.appendChild(openButton);
+
+    responseCards.appendChild(card);
+  });
+
+  if (rows.length > visibleLimit) {
+    loadMoreWrap.classList.remove("hidden-display");
+    loadMoreBtn.textContent = `Mostrar mais (${rows.length - visibleLimit})`;
+  } else {
+    loadMoreWrap.classList.add("hidden-display");
+  }
 }
 
 function renderBreakdowns(rows) {
@@ -395,8 +614,8 @@ function renderBreakdowns(rows) {
       const count = counts.get(option) || 0;
       const pct = percent(count, rows.length);
 
-      const row = document.createElement("div");
-      row.className = "choice-row";
+      const rowNode = document.createElement("div");
+      rowNode.className = "choice-row";
 
       const label = document.createElement("span");
       label.className = "choice-label";
@@ -411,8 +630,8 @@ function renderBreakdowns(rows) {
       progress.value = pct;
       progress.setAttribute("aria-label", `${option}: ${pct}%`);
 
-      row.append(label, value, progress);
-      card.appendChild(row);
+      rowNode.append(label, value, progress);
+      card.appendChild(rowNode);
     });
 
     breakdownGrid.appendChild(card);
@@ -421,19 +640,13 @@ function renderBreakdowns(rows) {
 
 function renderFeedback(rows) {
   feedbackList.replaceChildren();
-  const term = feedbackSearch.value.trim().toLocaleLowerCase("pt-BR");
-  const feedbackRows = rows.filter((row) => {
-    const text = String(row.open_feedback || "").trim();
-    if (!text) return false;
-    return !term || text.toLocaleLowerCase("pt-BR").includes(term);
-  });
-
+  const feedbackRows = rows.filter((row) => String(row.open_feedback || "").trim());
   feedbackCount.textContent = `${feedbackRows.length} ${feedbackRows.length === 1 ? "comentário" : "comentários"}`;
 
   if (!feedbackRows.length) {
     const empty = document.createElement("div");
     empty.className = "empty-state";
-    empty.textContent = term ? "Nenhum comentário corresponde à busca." : "Nenhum comentário aberto neste período.";
+    empty.textContent = "Nenhum comentário aberto neste filtro.";
     feedbackList.appendChild(empty);
     return;
   }
@@ -452,7 +665,13 @@ function renderFeedback(rows) {
     priority.textContent = row.priority || "—";
     footer.append(date, priority);
 
-    card.append(text, footer);
+    const openButton = document.createElement("button");
+    openButton.type = "button";
+    openButton.className = "soft-btn";
+    openButton.dataset.responseId = row.id;
+    openButton.textContent = "Abrir resposta completa";
+
+    card.append(text, footer, openButton);
     feedbackList.appendChild(card);
   });
 
@@ -464,48 +683,13 @@ function renderFeedback(rows) {
   }
 }
 
-function renderLatest(rows) {
-  responsesTableBody.replaceChildren();
-  const visibleRows = rows.slice(0, 100);
-  latestCount.textContent = `${rows.length} ${rows.length === 1 ? "resposta" : "respostas"}`;
-
-  if (!visibleRows.length) {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.colSpan = 5;
-    td.textContent = "Nenhuma resposta neste período.";
-    tr.appendChild(td);
-    responsesTableBody.appendChild(tr);
-    return;
-  }
-
-  visibleRows.forEach((row) => {
-    const tr = document.createElement("tr");
-    const values = [
-      formatDate(row.created_at),
-      row.priority || "—",
-      row.interest || "—",
-      formatDuration(row.duration_seconds),
-      row.open_feedback ? String(row.open_feedback).trim() : "—"
-    ];
-
-    values.forEach((value, index) => {
-      const td = document.createElement("td");
-      td.textContent = value;
-      if (index === 4) td.className = "table-comment";
-      tr.appendChild(td);
-    });
-
-    responsesTableBody.appendChild(tr);
-  });
-}
-
 function renderDashboard() {
   const rows = filteredResponses();
+  visibleLimit = Math.max(CARD_PAGE_SIZE, Math.min(visibleLimit, rows.length || CARD_PAGE_SIZE));
   renderKpis(rows);
+  renderResponseCards(rows);
   renderBreakdowns(rows);
   renderFeedback(rows);
-  renderLatest(rows);
 
   if (allResponses.length) {
     const newest = formatDate(allResponses[0].created_at);
@@ -522,7 +706,10 @@ async function loadDashboardData() {
   dashboardSubtitle.textContent = "Carregando respostas…";
 
   try {
+    await verifyAdminSession();
     allResponses = await fetchResponses();
+    visibleLimit = CARD_PAGE_SIZE;
+    showDashboard();
     renderDashboard();
     if (allResponses.length >= MAX_ROWS) {
       showPanelMessage(`O painel carregou as ${MAX_ROWS} respostas mais recentes. Exporte periodicamente se o volume crescer além desse limite.`);
@@ -530,11 +717,80 @@ async function loadDashboardData() {
   } catch (error) {
     console.error("Plexo admin load error", error);
     const message = error && error.message ? error.message : "Não foi possível carregar o painel.";
-    showPanelMessage(message, true);
-    dashboardSubtitle.textContent = "Falha ao carregar as respostas.";
+    if (/sessão|permissão|conta/i.test(message)) {
+      activeSession = null;
+      safeSessionClear();
+      showLogin();
+      showAuthMessage(message);
+    } else {
+      showPanelMessage(message, true);
+      dashboardSubtitle.textContent = "Falha ao carregar as respostas.";
+    }
   } finally {
     setLoading(false);
   }
+}
+
+function detailValue(row, question) {
+  const value = row[question.key];
+  if (question.key === "open_feedback" && !String(value || "").trim()) return "Não respondeu (opcional)";
+  return String(value || "—").trim() || "—";
+}
+
+function renderDetail() {
+  if (activeDetailIndex < 0 || activeDetailIndex >= detailRows.length) {
+    closeDetail();
+    return;
+  }
+
+  const row = detailRows[activeDetailIndex];
+  detailTitle.textContent = `Resposta #${responseOrdinal(row)}`;
+  detailMeta.textContent = `${formatDate(row.created_at)} · ${formatDuration(row.duration_seconds)}`;
+  detailPosition.textContent = `${activeDetailIndex + 1} de ${detailRows.length}`;
+  detailPrevBtn.disabled = activeDetailIndex <= 0;
+  detailNextBtn.disabled = activeDetailIndex >= detailRows.length - 1;
+  detailAnswers.replaceChildren();
+
+  questionDetails.forEach((question, index) => {
+    const item = document.createElement("article");
+    item.className = "detail-answer";
+
+    const number = document.createElement("div");
+    number.className = "detail-question-number";
+    number.textContent = `PERGUNTA ${String(index + 1).padStart(2, "0")}`;
+
+    const title = document.createElement("p");
+    title.className = "detail-question";
+    title.textContent = question.title;
+
+    const value = document.createElement("p");
+    value.className = `detail-value${question.open ? " open-answer" : ""}`;
+    value.textContent = detailValue(row, question);
+
+    item.append(number, title, value);
+    detailAnswers.appendChild(item);
+  });
+}
+
+function openDetailById(id) {
+  detailRows = filteredResponses();
+  activeDetailIndex = detailRows.findIndex((row) => row.id === id);
+  if (activeDetailIndex < 0) return;
+
+  detailOverlay.classList.remove("hidden-display");
+  detailOverlay.setAttribute("aria-hidden", "false");
+  document.body.classList.add("detail-open");
+  renderDetail();
+  detailCloseBtn.focus();
+}
+
+function closeDetail() {
+  if (!detailOverlay) return;
+  detailOverlay.classList.add("hidden-display");
+  detailOverlay.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("detail-open");
+  detailRows = [];
+  activeDetailIndex = -1;
 }
 
 function csvEscape(value) {
@@ -546,7 +802,7 @@ function csvEscape(value) {
 function exportCsv() {
   const rows = filteredResponses();
   if (!rows.length) {
-    showPanelMessage("Não há respostas no período selecionado para exportar.", true);
+    showPanelMessage("Não há respostas nos filtros selecionados para exportar.", true);
     return;
   }
 
@@ -602,6 +858,12 @@ async function logout() {
   }
 }
 
+function resetFiltersAndRender() {
+  visibleLimit = CARD_PAGE_SIZE;
+  closeDetail();
+  renderDashboard();
+}
+
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (loading) return;
@@ -622,19 +884,16 @@ loginForm.addEventListener("submit", async (event) => {
   setLoading(true);
   try {
     activeSession = await signIn(email, password);
-    safeSessionWrite(activeSession);
-
-    if (!hasAdminClaim(activeSession.user)) {
-      throw new Error("Esta conta ainda não recebeu a permissão de administrador da pesquisa.");
-    }
-
     passwordInput.value = "";
+    await verifyAdminSession();
+    safeSessionWrite(activeSession);
     showDashboard();
     setLoading(false);
     await loadDashboardData();
   } catch (error) {
     activeSession = null;
     safeSessionClear();
+    passwordInput.value = "";
     const message = error && error.message ? error.message : "Não foi possível entrar no painel.";
     showAuthMessage(message);
   } finally {
@@ -650,8 +909,67 @@ exportBtn.addEventListener("click", exportCsv);
 logoutBtn.addEventListener("click", () => {
   void logout();
 });
-periodFilter.addEventListener("change", renderDashboard);
-feedbackSearch.addEventListener("input", renderDashboard);
+periodFilter.addEventListener("change", resetFiltersAndRender);
+interestFilter.addEventListener("change", resetFiltersAndRender);
+sortFilter.addEventListener("change", resetFiltersAndRender);
+responseSearch.addEventListener("input", resetFiltersAndRender);
+
+loadMoreBtn.addEventListener("click", () => {
+  visibleLimit += CARD_PAGE_SIZE;
+  renderResponseCards(filteredResponses());
+});
+
+responseCards.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-response-id]");
+  if (button) openDetailById(button.dataset.responseId);
+});
+
+feedbackList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-response-id]");
+  if (button) openDetailById(button.dataset.responseId);
+});
+
+detailCloseBtn.addEventListener("click", closeDetail);
+detailOverlay.addEventListener("click", (event) => {
+  if (event.target && event.target.dataset && event.target.dataset.closeDetail === "true") closeDetail();
+});
+detailPrevBtn.addEventListener("click", () => {
+  if (activeDetailIndex > 0) {
+    activeDetailIndex -= 1;
+    renderDetail();
+  }
+});
+detailNextBtn.addEventListener("click", () => {
+  if (activeDetailIndex < detailRows.length - 1) {
+    activeDetailIndex += 1;
+    renderDetail();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (detailOverlay.classList.contains("hidden-display")) return;
+  if (event.key === "Escape") closeDetail();
+  if (event.key === "ArrowLeft" && activeDetailIndex > 0) {
+    activeDetailIndex -= 1;
+    renderDetail();
+  }
+  if (event.key === "ArrowRight" && activeDetailIndex < detailRows.length - 1) {
+    activeDetailIndex += 1;
+    renderDetail();
+  }
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    hiddenAt = Date.now();
+    return;
+  }
+
+  if (activeSession && hiddenAt && Date.now() - hiddenAt > 15 * 60 * 1000) {
+    void loadDashboardData();
+  }
+  hiddenAt = 0;
+});
 
 (async function bootstrap() {
   if (!isConfigured()) {
@@ -663,15 +981,13 @@ feedbackSearch.addEventListener("input", renderDashboard);
   activeSession = safeSessionRead();
   if (!activeSession || !activeSession.accessToken || !activeSession.refreshToken) {
     activeSession = null;
+    safeSessionClear();
     showLogin();
     return;
   }
 
   try {
-    await ensureFreshSession();
-    if (activeSession.user && !hasAdminClaim(activeSession.user)) {
-      throw new Error("Conta sem permissão administrativa.");
-    }
+    await verifyAdminSession();
     showDashboard();
     await loadDashboardData();
   } catch (error) {
