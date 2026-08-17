@@ -113,6 +113,7 @@ const stepIndicator = document.getElementById("stepIndicator");
 const submitError = document.getElementById("submitError");
 const submitErrorText = document.getElementById("submitErrorText");
 const retryBtn = document.getElementById("retryBtn");
+const restartBtn = document.getElementById("restartBtn");
 const setupWarning = document.getElementById("setupWarning");
 
 function safeStorageGet(key) {
@@ -126,6 +127,14 @@ function safeStorageGet(key) {
 function safeStorageSet(key, value) {
   try {
     localStorage.setItem(key, value);
+  } catch {
+    // A pesquisa continua funcionando mesmo se o navegador bloquear localStorage.
+  }
+}
+
+function safeStorageRemove(key) {
+  try {
+    localStorage.removeItem(key);
   } catch {
     // A pesquisa continua funcionando mesmo se o navegador bloquear localStorage.
   }
@@ -175,6 +184,17 @@ function setSurveyBusy(isBusy) {
     control.disabled = isBusy;
   });
   stepIndicator.textContent = isBusy ? "ENVIANDO" : `PULSO ${String(current + 1).padStart(2, "0")}`;
+}
+
+function resetSurveyState() {
+  Object.keys(responses).forEach((key) => delete responses[key]);
+  current = 0;
+  navigationLocked = false;
+  submitting = false;
+  startedAt = Date.now();
+  safeStorageRemove(STORAGE.completed);
+  safeStorageRemove(STORAGE.token);
+  clearSubmitError();
 }
 
 function renderTextAnswer(answers, q) {
@@ -400,6 +420,13 @@ skipBtn.addEventListener("click", () => {
 
 retryBtn.addEventListener("click", () => {
   void finishSurvey();
+});
+
+restartBtn.addEventListener("click", () => {
+  if (!isConfigured()) return;
+  resetSurveyState();
+  showOnly(survey);
+  renderQuestion();
 });
 
 if (safeStorageGet(STORAGE.completed) === "1") {
