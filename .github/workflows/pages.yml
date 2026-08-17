@@ -35,6 +35,23 @@ jobs:
           test -f admin.js
           test -f admin.css
 
+      - name: Validar proteções do frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "script-src 'self'" index.html
+          grep -q "script-src 'self'" admin.html
+          grep -q "connect-src 'self' https://yncspxfsvlqdnodlsosb.supabase.co" index.html
+          grep -q "connect-src 'self' https://yncspxfsvlqdnodlsosb.supabase.co" admin.html
+          grep -q 'noindex,nofollow' admin.html
+          grep -q 'plexo_survey_admin' admin.js
+          grep -q 'sessionStorage' admin.js
+          grep -q '/auth/v1' admin.js
+          grep -q 'Responder novamente' index.html
+          ! grep -Eq 'innerHTML|outerHTML|insertAdjacentHTML|document\.write' app.js admin.js
+          ! grep -Eq '<script[^>]+src="https?://' index.html admin.html
+          ! grep -Eq 'http://' index.html admin.html app.js admin.js config.js styles.css admin.css
+
   deploy:
     if: github.event_name != 'pull_request'
     needs: validate
