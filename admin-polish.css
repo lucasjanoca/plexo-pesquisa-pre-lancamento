@@ -1,0 +1,136 @@
+.toolbar-quick-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.toolbar-clear-btn {
+  color: var(--muted);
+}
+
+.toolbar-latest-btn {
+  border-color: rgba(54,241,232,.24);
+  color: var(--cyan);
+  background: rgba(54,241,232,.055);
+}
+
+.response-card {
+  position: relative;
+  overflow: hidden;
+  transition: transform .2s ease, border-color .2s ease, background .2s ease;
+}
+
+.response-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--cyan), var(--violet));
+  opacity: .45;
+}
+
+.response-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(54,241,232,.18);
+  background: rgba(255,255,255,.035);
+}
+
+.response-extra-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.response-extra-item {
+  min-width: 0;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 13px;
+  background: rgba(255,255,255,.022);
+  padding: 11px 12px;
+}
+
+.response-extra-item span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.response-extra-item strong {
+  display: block;
+  color: #e7eef8;
+  font-size: .82rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.response-badge.maybe {
+  color: #ffe09a;
+  border-color: rgba(255,216,117,.2);
+  background: rgba(255,216,117,.06);
+}
+
+.response-badge.negative {
+  color: #ffb2bd;
+  border-color: rgba(255,113,133,.22);
+  background: rgba(255,113,133,.065);
+}
+
+.response-open-btn {
+  min-height: 46px;
+}
+
+.detail-shortcut-hint {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: .72rem;
+  white-space: nowrap;
+}
+
+.detail-panel {
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 820px) {
+  .response-extra-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .toolbar-quick-actions {
+    justify-content: stretch;
+  }
+
+  .toolbar-quick-actions .soft-btn {
+    flex: 1 1 0;
+  }
+
+  .detail-shortcut-hint {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .toolbar-quick-actions {
+    flex-direction: column;
+  }
+
+  .toolbar-quick-actions .soft-btn {
+    width: 100%;
+  }
+
+  .response-card:hover {
+    transform: none;
+  }
+}
+
+@media (hover: none) {
+  .response-card:hover {
+    transform: none;
+  }
+}
