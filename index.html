@@ -19,7 +19,7 @@
   <meta name="referrer" content="no-referrer" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://yncspxfsvlqdnodlsosb.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'; upgrade-insecure-requests" />
   <title>Pulso da Cidade — Pesquisa Plexo</title>
-  <link rel="stylesheet" href="styles.css?v=20260817-1" />
+  <link rel="stylesheet" href="styles.css?v=20260819-2" />
   <script src="config.js?v=20260817-1" defer></script>
   <script src="app.js?v=20260817-1" defer></script>
 </head>
@@ -85,7 +85,35 @@
       <h2 id="finalTitle">Obrigado por deixar<br><span>seu pulso na cidade.</span></h2>
       <p>Sua resposta foi registrada e vai ajudar a Plexo a entender melhor o que faz diferença na experiência local.</p>
       <div class="final-code">PLX // 2026</div>
-      <button class="secondary-btn" id="restartBtn" type="button">Responder novamente</button>
+
+      <div class="social-kicker">Continue no pulso da Plexo</div>
+      <div class="final-actions" aria-label="Ações após responder a pesquisa">
+        <a class="social-btn instagram-btn" href="https://www.instagram.com/plexoplace?utm_source=qr&amp;igsh=NzFtZTVteW92bGQw" target="_blank" rel="noopener noreferrer" aria-label="Abrir Instagram da Plexo" title="Instagram @plexoplace">
+          <span class="social-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img">
+              <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5.2"></rect>
+              <circle cx="12" cy="12" r="4.1"></circle>
+              <circle class="icon-fill" cx="17.55" cy="6.65" r="1.05"></circle>
+            </svg>
+          </span>
+          <span class="social-name">Instagram</span>
+        </a>
+
+        <button class="secondary-btn" id="restartBtn" type="button">
+          <span>Responder novamente</span>
+          <span class="restart-arrow" aria-hidden="true">↻</span>
+        </button>
+
+        <a class="social-btn tiktok-btn" href="https://www.tiktok.com/@plexoplace?_r=1&amp;_t=ZS-98yokBtB1WB" target="_blank" rel="noopener noreferrer" aria-label="Abrir TikTok da Plexo" title="TikTok @plexoplace">
+          <span class="social-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img">
+              <path d="M14.4 3.3c.42 2.23 1.7 3.55 3.8 3.96v3.08a8.35 8.35 0 0 1-3.77-1.1v5.93a5.47 5.47 0 1 1-4.72-5.41v3.11a2.43 2.43 0 1 0 1.64 2.3V3.3h3.05Z"></path>
+            </svg>
+          </span>
+          <span class="social-name">TikTok</span>
+        </a>
+      </div>
+      <p class="social-handle">@plexoplace</p>
     </section>
   </main>
 
